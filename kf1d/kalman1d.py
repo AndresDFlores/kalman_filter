@@ -5,11 +5,14 @@ from kalman_filter import *
 class Kalman1D(KalmanFilter):
 
 
-    def __init__(self):
+    def __init__(self, literal=False):
 
         # child inherits all methods/props from parent
         # do not need name of parent element, automatically inherit meths/props from parent
         super().__init__()
+
+        #  display messages
+        self.literal = literal
 
         #  log all measured data
         keys = ['time', 'x_pos', 'x_vel']
@@ -156,14 +159,12 @@ class Kalman1D(KalmanFilter):
         #  predict next state
         A, B, u = self.set_state_matrices()
         x_curr_pred = self.predict_next_state(A, self.x_prev, B, u)
-        print('\nX_CURR_PRED:')
-        print(x_curr_pred)
+        if self.literal: print(f'\nX_CURR_PRED:\n{x_curr_pred}')
 
 
         #  predict process Covariance Matrix
         P_pred = self.predict_process_covariance(A, self.P_prev)
-        print('\nP_PRED:')
-        print(P_pred)
+        if self.literal: print(f'\nP_PRED:\n{P_pred}')
 
 
 
@@ -172,8 +173,7 @@ class Kalman1D(KalmanFilter):
         #  measured data
         C, z = self.set_measured_input_matrices()
         Y = self.get_measured_input(C, self.current_state, z)
-        print('\nY:')
-        print(Y)
+        if self.literal: print(f'\nY:\n{Y}')
 
 
 
@@ -190,20 +190,17 @@ class Kalman1D(KalmanFilter):
 
         #  sensor noise covariance matrix
         R = self.set_sensor_noise_covariance_matrix(observation_error_matrix)
-        print('\nR:')
-        print(R)
+        if self.literal: print(f'\nR:\n{R}')
 
 
         #  adaptation matrix
         H = self.set_H(self.P_prev)
-        print('\nH:')
-        print(H)
+        if self.literal: print(f'\nH:\n{H}')
 
 
         #  calculate kalman gain
         K = self.get_kalman_gain(P_pred, H, R)
-        print('\nK:')
-        print(K)
+        if self.literal: print(f'\nK:\n{K}')
 
 
 
@@ -211,15 +208,13 @@ class Kalman1D(KalmanFilter):
 
         #  get next iteration state
         x_corrected = self.get_corrected_state(x_curr_pred, K, Y, H)
-        print('\nX_CORRECTED_STATE:')
-        print(x_corrected)
+        if self.literal: print(f'\nX_CORRECTED_STATE:\n{x_corrected}')
 
 
         #  get next iteration process covariance
         I = np.identity(K.shape[0])
         P_corrected = self.get_corrected_process_covariance(I, K, H, P_pred)
-        print('\nP_CORRECTED_STATE:')
-        print(P_corrected)
+        if self.literal: print(f'\nP_CORRECTED_STATE:\n{P_corrected}')
 
 
 

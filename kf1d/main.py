@@ -8,6 +8,10 @@ from kalman_filter import *
 from plot_kf_results import *
 
 
+#  display messages
+literal = True
+
+
 #  load data from source file
 data_files = ['demo_point_trajectories.xlsx']
 file = data_files[0]
@@ -22,7 +26,7 @@ data_lists = [val for _,val in data_dict.items()]
 
 
 #  init kalman filter
-kf_class = Kalman1D()
+kf_class = Kalman1D(literal)
 
 
 #  initialize kf variables
@@ -36,8 +40,7 @@ for idx, row in enumerate(range(rows)):
 
     #  set iteration index
     kf_class.set_iter(idx)
-    print('\n')
-    print(kf_class.iter)
+    if literal: print('\n---> ITERATION: ', kf_class.iter)
 
 
     #  measure current position data
@@ -70,4 +73,4 @@ for idx, row in enumerate(range(rows)):
 #  plot kalman filter performance results
 plot_kf_class = PlotKF(save_figs=True)
 for dim in kf_class.kf_results.keys():
-    plot_kf_class.plot_results(kf_class.kf_results[dim], kf_dim=dim)
+    if literal: plot_kf_class.plot_results(kf_class.kf_results[dim], kf_dim=dim)

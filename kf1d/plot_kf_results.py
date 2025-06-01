@@ -51,7 +51,9 @@ class PlotKF:
 
 
         #  format plot
-        self.ax.set_title(f'Kalman Filter Results: {kf_dim}\nRMS: {round(self.rms, 3)}')
+        self.ax.set_title(f'Kalman Filter RMS: {round(self.rms, 3)}')
+        self.ax.set_xlabel('Iteration')
+        self.ax.set_ylabel(f'{kf_dim}')
         self.ax.grid(True)
         self.ax.legend()
 
