@@ -2,7 +2,7 @@ import numpy as np
 from kalman_filter import *
 
 
-class Kalman1D(KalmanFilter):
+class Kalman2D(KalmanFilter):
 
 
     def __init__(self, literal=False):
@@ -15,7 +15,7 @@ class Kalman1D(KalmanFilter):
         self.literal = literal
 
         #  log all measured data
-        self.dim_keys = ['time', 'x_pos', 'x_vel']
+        self.dim_keys = ['time', 'x_pos', 'y_pos', 'x_vel', 'y_vel']
         self.measured = {key:[] for key in self.dim_keys}  # replace lists with dequeue to keep this from growing indefinitely
 
         #  record predictions and measurements by iter index
@@ -26,7 +26,19 @@ class Kalman1D(KalmanFilter):
                 measured=[],
                 kalman=[]
             ),
+            y_pos = dict(
+                idx=[],
+                predicted=[],
+                measured=[],
+                kalman=[]
+            ),
             x_vel = dict(
+                idx=[],
+                predicted=[],
+                measured=[],
+                kalman=[]
+            ),
+            y_vel = dict(
                 idx=[],
                 predicted=[],
                 measured=[],
@@ -54,8 +66,9 @@ class Kalman1D(KalmanFilter):
         current_state = np.matrix(
             [
                 [current_state_dict['x_pos']],
+                [current_state_dict['y_pos']],
                 [current_state_dict['x_vel']],
-
+                [current_state_dict['y_vel']],
             ]
         )
 
@@ -68,14 +81,37 @@ class Kalman1D(KalmanFilter):
 
 
 
-    def set_initial_process_covariance_matrix(self):
+    def set_initial_process_covariance_matrix(self, dim_keys=[], curr=True):
 
-        covariance_matrix = np.matrix(
-            [
-                [400, 0],
-                [0, 25]
-            ]
-        )
+        #  calculate each dimension's deviation from the average
+        deviations = {key:[] for key in dim_keys}
+        for dim_idx, dim_key in enumerate(dim_keys):
+
+            dim_data = self.measured[dim_key]
+            if not curr:
+                dim_data = dim_data[:-1]
+
+            dim_avg = np.mean(dim_data)
+
+            deviations_array = np.array([dim_avg-val for val in dim_data])
+            deviations[dim_key] = deviations_array
+
+
+
+        #  build empty covariance matrix
+        covariance_matrix = np.empty((len(dim_keys), len(dim_keys)))
+
+
+
+        #  calculate covariances
+        for dim_idx, dim_key in enumerate(dim_keys):
+            dim_array = deviations[dim_key]
+
+            for co_dim_idx, co_dim_key in enumerate(dim_keys):
+                co_dim_array = deviations[co_dim_key]
+
+                covariance = (np.sum(dim_array*co_dim_array))/len(dim_data)
+                covariance_matrix[dim_idx][co_dim_idx] = covariance
 
         self.P_prev = covariance_matrix
 
@@ -85,16 +121,20 @@ class Kalman1D(KalmanFilter):
 
         A = np.matrix(
             [
-                [1, self.dt],
-                [0, 1],
+                [1, 0, self.dt, 0],
+                [0, 1, 0, self.dt],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]
             ]
         )
 
 
         B = np.matrix(
             [
-                [0.5*(self.dt**2)],
-                [self.dt],
+                [0.5*(self.dt**2), 0],
+                [0, 0.5*(self.dt**2)],
+                [self.dt, 0],
+                [0, self.dt]
             ]
         )
 
@@ -102,7 +142,8 @@ class Kalman1D(KalmanFilter):
 
         u = np.matrix(
             [
-                [2]
+                [0],
+                [-9.8]
             ]
         )
 
@@ -114,8 +155,10 @@ class Kalman1D(KalmanFilter):
 
         C = np.matrix(
             [
-                [1, 0],
-                [0, 1],
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1],
             ]
         )
 
@@ -182,8 +225,10 @@ class Kalman1D(KalmanFilter):
         #  observation error (DOES NOT update) - tune this to influence KF performance
         observation_error_matrix = np.matrix(
             [
-                [25, 0],
-                [0, 6]
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]
             ]
         )  # [[22.5, 0], [0, 1]], calculate variance for each axis as a starting point
 
@@ -224,10 +269,20 @@ class Kalman1D(KalmanFilter):
         self.kf_results['x_pos']['measured'].append(self.current_state[0, 0])
         self.kf_results['x_pos']['kalman'].append(x_corrected[0, 0])
 
+        self.kf_results['y_pos']['idx'].append(self.iter)
+        self.kf_results['y_pos']['predicted'].append(x_curr_pred[1, 0])
+        self.kf_results['y_pos']['measured'].append(self.current_state[1, 0])
+        self.kf_results['y_pos']['kalman'].append(x_corrected[1, 0])
+
         self.kf_results['x_vel']['idx'].append(self.iter)
-        self.kf_results['x_vel']['predicted'].append(x_curr_pred[1, 0])
-        self.kf_results['x_vel']['measured'].append(self.current_state[1, 0])
-        self.kf_results['x_vel']['kalman'].append(x_corrected[1, 0])
+        self.kf_results['x_vel']['predicted'].append(x_curr_pred[2, 0])
+        self.kf_results['x_vel']['measured'].append(self.current_state[2, 0])
+        self.kf_results['x_vel']['kalman'].append(x_corrected[2, 0])
+
+        self.kf_results['y_vel']['idx'].append(self.iter)
+        self.kf_results['y_vel']['predicted'].append(x_curr_pred[3, 0])
+        self.kf_results['y_vel']['measured'].append(self.current_state[3, 0])
+        self.kf_results['y_vel']['kalman'].append(x_corrected[3, 0])
 
 
 

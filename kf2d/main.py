@@ -2,7 +2,7 @@ from operator import itemgetter
 
 import pandas as pd
 
-from kalman1d import *
+from kalman2d import *
 from kalman_filter import *
 
 from plot_kf_results import *
@@ -13,14 +13,14 @@ literal = True
 
 
 #  how many iterations to pass before starting the kalman filter
-kf_iter_start = 1
+kf_iter_start = 5
 
 
 #  load data from source file
-data_files = ['demo_point_trajectories.xlsx']
+data_files = ['demo_data.xlsx']
 file = data_files[0]
 
-data = pd.read_excel(file, sheet_name='obj_0')
+data = pd.read_excel(file, sheet_name='obj_0').head(15)
 rows, cols = data.shape
 
 
@@ -30,12 +30,7 @@ data_lists = [val for _,val in data_dict.items()]
 
 
 #  init kalman filter
-kf_class = Kalman1D(literal)
-
-
-#  initialize kf variables
-kf_class.set_dt(1)  # set time delta between data points
-kf_class.set_initial_process_covariance_matrix()  # initialize process covariance matrix
+kf_class = Kalman2D(literal)
 
 
 
@@ -48,18 +43,36 @@ for idx, row in enumerate(range(rows)):
 
 
     #  measure current position data
-    time_curr, x_pos_curr, x_vel_curr = list(map(itemgetter(idx), data_lists))
+    time_curr, x_pos_curr, y_pos_curr = list(map(itemgetter(idx), data_lists))
 
 
     kf_class.measured['time'].append(time_curr)
     kf_class.measured['x_pos'].append(x_pos_curr)
+    kf_class.measured['y_pos'].append(y_pos_curr)
+
+
+    #  calculate velocity from positional data
+    if idx>=1:
+        dt = kf_class.measured['time'][-1] - kf_class.measured['time'][-2]
+        x_vel_curr = (kf_class.measured['x_pos'][-1] - kf_class.measured['x_pos'][-2])/dt
+        y_vel_curr = (kf_class.measured['y_pos'][-1] - kf_class.measured['y_pos'][-2])/dt
+
+    else:
+        dt = 0
+        x_vel_curr = 0
+        y_vel_curr = 0
+
+
     kf_class.measured['x_vel'].append(x_vel_curr)
+    kf_class.measured['y_vel'].append(y_vel_curr)
 
 
     #  update measured state matrix values with current measured values
     current_state_dict = dict(
         x_pos = kf_class.measured['x_pos'][-1],
+        y_pos = kf_class.measured['y_pos'][-1],
         x_vel = kf_class.measured['x_vel'][-1],
+        y_vel = kf_class.measured['y_vel'][-1],
     )
 
 
@@ -67,11 +80,17 @@ for idx, row in enumerate(range(rows)):
     kf_class.set_current_state_measurement(current_state_dict)
 
 
+    #  initialize kf process covariance matrix
+    if idx==kf_iter_start-1:
+        kf_class.set_initial_process_covariance_matrix(dim_keys=kf_class.dim_keys[1:])
+
+
     #  kalman filter implementation after 10 data acquisition cycles
     if idx<kf_iter_start:
         kf_class.set_initial_state_matrix()
 
     else:
+        kf_class.set_dt(dt)  # set time delta between data points
         kf_class.main()
 
 
